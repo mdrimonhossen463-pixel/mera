@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mera - তোমার বন্ধু</title>
+<style>
+body{font-family:sans-serif;background:#fff0f5;margin:0;padding:10px}
+h2{text-align:center;color:#ff2e7e}
+#box{background:white;border-radius:15px;padding:10px;max-width:600px;margin:auto;min-height:400px}
+.msg{padding:10px;border-radius:10px;margin:8px 0;white-space:pre-wrap}
+.me{background:#ffe0ec;text-align:right}
+.ai{background:#f0f0f0}
+img{max-width:100%;border-radius:10px}
+input,button{padding:12px;border-radius:10px;border:1px solid #ddd;font-size:16px}
+#input{width:68%}
+button{background:#ff2e7e;color:white;border:none}
+#key{width:95%;margin-bottom:10px}
+</style>
+</head>
+<body>
+<h2>🌸 Mera - তোমার বন্ধু 🌸</h2>
+<div id="box">
+<input id="key" type="password" placeholder="এখানে তোমার Gemini API Key দাও">
+<div id="chat"><div class="msg ai">হাই! আমি Mera 😊 তুমি চাইলে লিখে প্রশ্ন করো, অথবা ছবি দাও, আমি দেখে সমাধান করে দিবো।</div></div>
+<div style="margin-top:10px">
+<input type="file" id="pic" accept="image/*" style="display:none">
+<button onclick="document.getElementById('pic').click()">📷 ছবি দাও</button>
+<img id="preview" style="display:none;margin-top:10px">
+<br><br>
+<input id="input" placeholder="এখানে লেখো...">
+<button onclick="send()">পাঠাও</button>
+</div>
+</div>
+<script>
+let imgData = null;
+document.getElementById('pic').addEventListener('change', e=>{
+  let f=e.target.files[0];
+  let r=new FileReader();
+  r.onload=()=>{ imgData=r.result.split(',')[1];
+    let p=document.getElementById('preview'); p.src=r.result; p.style.display='block'; };
+  r.readAsDataURL(f);
+});
+async function send(){
+  let key=document.getElementById('key').value.trim();
+  let text=document.getElementById('input').value.trim();
+  if(!key){ alert('আগে API Key দাও!'); return; }
+  if(!text && !imgData){ alert('কিছু লেখো অথবা ছবি দাও'); return; }
+  let chat=document.getElementById('chat');
+  chat.innerHTML+=`<div class="msg me">${text || 'এই ছবিটা দেখো'}</div>`;
+  if(imgData) chat.innerHTML+=`<div class="msg me"><img src="data:image/jpeg;base64,${imgData}"></div>`;
+  document.getElementById('input').value='';
+  let parts=[{text:"তুমি Mera, একজন মিষ্টি বন্ধুর মতো বাংলায় কথা বলো। ইউজারের নাম জানো না, তাই বন্ধু বলে ডাকো। ছবি থাকলে ছবি দেখে ভালো করে বুঝিয়ে সমাধান দাও। প্রশ্ন: "+text}];
+  if(imgData) parts.push({inline_data:{mime_type:"image/jpeg",data:imgData}});
+  chat.innerHTML+=`<div class="msg ai" id="loading">Mera লিখছে...</div>`;
+  try{
+    let res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:parts}]})});
+    let data=await res.json();
+    document.getElementById('loading').remove();
+    let reply=data.candidates?.[0]?.content?.parts?.[0]?.text || 'দুঃখিত, বুঝতে পারিনি। আবার চেষ্টা করো।';
+    chat.innerHTML+=`<div class="msg ai">${reply}</div>`;
+  }catch(e){ document.getElementById('loading').remove(); chat.innerHTML+=`<div class="msg ai">নেটে সমস্যা হইছে, আবার চেষ্টা করো।</div>`; }
+  imgData=null; document.getElementById('preview').style.display='none';
+  window.scrollTo(0,document.body.scrollHeight);
+}
+</script>
+</body>
+</html>
